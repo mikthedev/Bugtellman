@@ -28,7 +28,17 @@ scanner → detectors → behavior engine → logic engine → judgment engine �
 - Discovers up to 5 internal subpages and analyzes them
 - Checks up to 30 external links for 404 and other HTTP errors
 - Captures screenshots of the page and per-issue thumbnails (via Microlink API)
-- **Automated QA tests** (run with Analyze): user journey (nav + forms + multi-step inner links), form state testing (empty/invalid/boundary/valid), visual regression baseline, and performance metrics
+- **Automated QA tests** (run with Analyze): user journey (nav + forms + multi-step inner links), form state testing (empty/invalid/boundary/valid), visual regression baseline, performance metrics, and **authentication checks** (login/register form discovery, security validation, input validation testing)
+
+### Authentication Testing
+
+Bugtellman automatically discovers and tests authentication forms (login, register, signin, signup):
+
+- **Discovery**: Finds auth links and forms on the main page and linked auth pages
+- **Security checks**: Validates CSRF tokens, password field security, form structure
+- **Input validation**: Tests invalid credentials, malformed inputs (email, phone, etc.), empty required fields
+- **Accessibility**: Checks form labels, error messages, and ARIA attributes
+- **Consistency**: Validates form structure and field requirements across discovered auth pages
 
 ### Issue Categories
 
@@ -41,12 +51,13 @@ scanner → detectors → behavior engine → logic engine → judgment engine �
 | **Security** | Mixed content (HTTP links on HTTPS pages) |
 | **CSS** | Empty rules, excessive `!important`, invalid hex colors, z-index abuse, vendor prefixes |
 | **Resources** | Failed CSS loads |
+| **Authentication** | Missing CSRF tokens, insecure password fields, missing form validation, invalid credential acceptance, accessibility issues in auth forms |
 
 ### Results Panel
 
 - **Peek-a-Bug** (manual): UI-facing issues with QA-style comments, screenshots, and fix instructions
 - **Code Crimes** (technical): Code-level issues with suggested fixes, `whyFlagged` explanations, and code snippets
-- **Automated QA Test Results**: User journey pass/fail, state tests, visual diffs, performance (when URL analyzed)
+- **Automated QA Test Results**: User journey pass/fail, state tests, visual diffs, performance, and authentication checks (when URL analyzed)
 - Severity filter: Urgent → High → Medium → Low → Minor
 - Stats: total pages, broken links, images without alt
 
@@ -70,7 +81,7 @@ Results are sorted by severity: **Urgent** → **High** → **Medium** → **Low
 
 | Folder | Purpose |
 |--------|---------|
-| **qa-engine** | Detectors (HTML, CSS, links, a11y, resources), automated tests (user journey, state, visual regression, performance) |
+| **qa-engine** | Detectors (HTML, CSS, links, a11y, resources), automated tests (user journey, state, visual regression, performance, **auth-check** for login/register forms) |
 | **engine** | Validation pipeline: reproducibility, impact, aggregation, component awareness, flow validator, confidence, decision, risk |
 | **intelligence** | Decision Intelligence Layer: intent analyzer, context validator, issue judge, importance ranker, result optimizer. Filters noise and ranks like a human QA. |
 | **behaviorEngine** | Human-Behavior Testing Layer: explorer, edge-case tester, state tester, expectation validator, inconsistency detector, judgment engine. Simulates user testing and finds behavioral/logical/interaction bugs. |
