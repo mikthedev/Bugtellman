@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { Inter, JetBrains_Mono, Syne } from 'next/font/google'
+import { Inter, JetBrains_Mono, Syne, Poppins } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
 const inter = Inter({
@@ -18,6 +19,18 @@ const syne = Syne({
   weight: ['400', '500', '600', '700', '800'],
 })
 
+const poppins = Poppins({
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  weight: ['400', '500', '600', '700', '800', '900'],
+})
+
+const phonk = localFont({
+  src: '../fonts/Phonk-Regular.otf',
+  variable: '--font-phonk',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'Bugtellman — Intelligent QA for Websites',
   description: 'Analyze any website for bugs, issues, accessibility, and more. Drop files or enter a URL.',
@@ -29,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${syne.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${syne.variable} ${poppins.variable} ${phonk.variable}`}>
       <body className="font-sans antialiased bg-[#1a1b1e] text-zinc-300 min-h-screen">
         {children}
       </body>

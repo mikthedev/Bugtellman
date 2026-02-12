@@ -12,6 +12,7 @@ const config: Config = {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
         display: ['var(--font-syne)', 'Syne', 'system-ui', 'sans-serif'],
+        title: ['var(--font-phonk)', 'Phonk', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'fade-in': {

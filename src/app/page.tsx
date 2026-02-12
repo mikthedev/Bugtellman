@@ -115,12 +115,12 @@ export default function Home() {
         <header className="flex flex-col items-center px-6 pt-16 pb-12 text-center sm:pt-24 sm:pb-14">
           <div className="mb-4 flex items-center justify-center gap-2">
             <LadybugIcon className="h-10 w-10 sm:h-12 sm:w-12" />
-            <h1 className="font-display text-4xl font-black tracking-tight text-zinc-100 sm:text-6xl sm:tracking-[-0.03em]">
+            <h1 className="font-title text-4xl font-black tracking-tight text-zinc-100 sm:text-6xl sm:tracking-[-0.03em]">
               Bugtellman
             </h1>
           </div>
           <p className="max-w-md text-sm text-zinc-500 sm:text-base">
-            Catch the bugs before they catch you. QA for websites — accessibility, links, layout.
+            Catch the bugs before they catch you
           </p>
         </header>
 
