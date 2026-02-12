@@ -7,6 +7,7 @@
  */
 
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import type { QAIssue } from '../types';
 import type { AuthDiscovery } from './types';
 import { createAuthCheckIssue } from './checker';
@@ -26,7 +27,7 @@ const VALID_DUMMY = {
 /** Input classification from type/name */
 type FieldKind = 'email' | 'phone' | 'password' | 'username' | 'text';
 
-function classifyInput($el: cheerio.Cheerio<cheerio.AnyNode>): FieldKind {
+function classifyInput($el: cheerio.Cheerio<Element>): FieldKind {
   const type = ($el.attr('type') || 'text').toLowerCase();
   const name = ($el.attr('name') || '').toLowerCase();
   if (type === 'email') return 'email';
