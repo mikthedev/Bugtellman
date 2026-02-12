@@ -9,7 +9,7 @@
  * - If intent is "intentional" → element is hidden/decorative → userImpact = false
  * - If issue type indicates a blocking failure (broken link, 404, form error) → userImpact = true
  * - If issue type indicates cosmetic/structural only and no critical element → userImpact = false when safe
- * - Fallback: no interaction possible → assume userImpact = true (report)
+ * - Fallback: require user-facing selector or high severity before userImpact = true
  *
  * Pure: no I/O, no DOM; only issue fields and type/category patterns.
  */
@@ -43,6 +43,14 @@ const COSMETIC_PATTERNS = [
   'media query',
 ];
 
+const USER_VISIBLE_SELECTORS = ['button', 'a', 'input', 'form', 'label', '[role="button"]'];
+
+function hasUserVisibleSelector(selector?: string): boolean {
+  if (!selector) return false;
+  const lower = selector.toLowerCase();
+  return USER_VISIBLE_SELECTORS.some((token) => lower.includes(token));
+}
+
 function matchesPattern(text: string, patterns: string[]): boolean {
   const lower = text.toLowerCase();
   return patterns.some((p) => lower.includes(p));
@@ -62,16 +70,13 @@ export function validateUserImpact(issue: EnrichedIssue): boolean {
 
   // Cosmetic-only and not about a critical element → assume no interaction, low impact
   if (matchesPattern(typeAndMessage, COSMETIC_PATTERNS)) {
-    const selector = issue.selector ?? '';
-    const criticalTags = ['button', 'a', 'input', 'form', 'label'];
-    const isCriticalElement = criticalTags.some((tag) =>
-      selector.toLowerCase().includes(tag)
-    );
-    if (!isCriticalElement) return false;
+    if (!hasUserVisibleSelector(issue.selector)) return false;
   }
 
-  // Fallback: we cannot simulate interaction → assume it affects the user
-  return true;
+  // Fallback: only mark as user-impacting if we have evidence of user-facing scope.
+  if (hasUserVisibleSelector(issue.selector)) return true;
+  if ((issue.severity ?? 0) >= 70) return true;
+  return false;
 }
 
 /**
