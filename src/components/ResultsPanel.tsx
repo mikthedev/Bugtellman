@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import type { AnalysisResult, QAIssue, Severity } from '@/lib/qa-engine';
 
 interface ResultsPanelProps {
@@ -219,7 +220,7 @@ function ManualIssueCard({ grouped, pageScreenshot, analyzedUrl }: { grouped: Gr
                         </button>
                       </div>
                     ))}
-                    <p className="text-xs text-zinc-500 mt-2">💡 Paste these selectors in DevTools Console to find the elements: <code className="text-[#CAF76F]">document.querySelector('selector')</code></p>
+                    <p className="text-xs text-zinc-500 mt-2">💡 Paste these selectors in DevTools Console to find the elements: <code className="text-[#CAF76F]">document.querySelector(&apos;selector&apos;)</code></p>
                   </div>
                 ) : (
                   <div className="flex items-start gap-2">
@@ -297,9 +298,12 @@ function ManualIssueCard({ grouped, pageScreenshot, analyzedUrl }: { grouped: Gr
         {screenshotUrl && (
           <div className="lg:w-[320px] lg:min-w-[320px] border-t lg:border-t-0 lg:border-l border-zinc-700/50 flex flex-col">
             <a href={linkHref} target="_blank" rel="noopener noreferrer" className="relative flex min-h-[200px] lg:min-h-0 lg:flex-1 items-center justify-center overflow-hidden bg-zinc-950/80 p-4">
-              <img
+              <Image
                 src={screenshotUrl}
                 alt="Where the issue appears"
+                width={320}
+                height={200}
+                unoptimized
                 className="h-full w-full rounded-lg object-contain object-top"
               />
               {screenshotHint && (
@@ -371,7 +375,7 @@ function TechnicalIssueCard({ grouped }: { grouped: GroupedIssue }) {
                         </button>
                       </div>
                     ))}
-                    <p className="text-xs text-zinc-500 mt-2">💡 Paste these selectors in DevTools Console to find the elements: <code className="text-[#CAF76F]">document.querySelector('selector')</code></p>
+                    <p className="text-xs text-zinc-500 mt-2">💡 Paste these selectors in DevTools Console to find the elements: <code className="text-[#CAF76F]">document.querySelector(&apos;selector&apos;)</code></p>
                   </div>
                 ) : (
                   <div className="flex items-start gap-2">
@@ -504,7 +508,7 @@ function GentleReminder({ show }: { show: boolean }) {
         </svg>
       </span>
       <div>
-        <p className="font-semibold text-zinc-200">🐛 You've got quite a bug infestation!</p>
+        <p className="font-semibold text-zinc-200">🐛 You&apos;ve got quite a bug infestation!</p>
         <p className="mt-0.5 text-sm text-zinc-500">Work through them one critter at a time. Use the severity filter to focus your bug hunt.</p>
       </div>
     </div>
@@ -554,12 +558,11 @@ const DEFAULT_STATS = { totalPages: 0, totalLinks: 0, brokenLinks: 0, totalImage
 export function ResultsPanel({ result }: ResultsPanelProps) {
   const [filter, setFilter] = useState<SeverityFilter>('all');
   const [viewSection, setViewSection] = useState<ViewSection>('manual');
-  if (!result) return null;
-
-  const issues = result.issues ?? [];
-  const summary = result.summary ?? DEFAULT_SUMMARY;
-  const stats = result.stats ?? DEFAULT_STATS;
-  const pageScreenshot = result.pageScreenshot;
+  
+  const issues = result?.issues ?? [];
+  const summary = result?.summary ?? DEFAULT_SUMMARY;
+  const stats = result?.stats ?? DEFAULT_STATS;
+  const pageScreenshot = result?.pageScreenshot;
   const showScrewed = issues.length >= ISSUE_COUNT_FOR_SCREWED;
   const technical = issues.filter(i => (i.audience ?? 'technical') === 'technical');
   const manual = issues.filter(i => i.audience === 'manual');
@@ -569,6 +572,8 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
     const man = issues.filter(i => i.audience === 'manual');
     return { groupedTechnical: groupSimilarIssues(tech), groupedManual: groupSimilarIssues(man) };
   }, [issues]);
+
+  if (!result) return null;
 
   const filteredGroupedTechnical = filter === 'all' ? groupedTechnical : groupedTechnical.filter(g => g.representative.severity === filter);
   const filteredGroupedManual = filter === 'all' ? groupedManual : groupedManual.filter(g => g.representative.severity === filter);
@@ -684,7 +689,7 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
                 Page preview
               </summary>
               <a href={result.analyzedUrl} target="_blank" rel="noopener noreferrer" className="block border-t border-zinc-700/50 p-4">
-                <img src={pageScreenshot} alt="Analyzed page" className="max-h-52 w-full rounded-xl object-cover object-top opacity-90 transition-opacity group-open:opacity-100" />
+                <Image src={pageScreenshot} alt="Analyzed page" width={800} height={208} unoptimized className="max-h-52 w-full rounded-xl object-cover object-top opacity-90 transition-opacity group-open:opacity-100" />
               </a>
             </details>
           )}
