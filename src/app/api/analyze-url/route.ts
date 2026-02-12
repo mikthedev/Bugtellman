@@ -3,6 +3,52 @@ import * as cheerio from 'cheerio';
 import { analyzeHTML, analyzeCSS, extractLinks } from '@/lib/qa-engine';
 import { runValidationPipeline, mergeValidationIntoResult } from '@/lib/engine';
 
+type LinkCheckOutcome =
+  | { kind: 'ok' }
+  | { kind: 'broken'; status: number }
+  | { kind: 'inconclusive'; status?: number };
+
+const BOT_OR_POLICY_STATUSES = new Set([401, 403, 405, 429]);
+
+async function checkLinkStatus(url: string): Promise<LinkCheckOutcome> {
+  const requestInit = {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Bugtellman QA/1.0)' },
+    signal: AbortSignal.timeout(5000),
+    redirect: 'follow' as const,
+  };
+
+  try {
+    let response = await fetch(url, {
+      ...requestInit,
+      method: 'HEAD',
+    });
+
+    // HEAD is commonly blocked or unsupported. Retry with GET before deciding.
+    if (!response.ok || BOT_OR_POLICY_STATUSES.has(response.status)) {
+      response = await fetch(url, {
+        ...requestInit,
+        method: 'GET',
+      });
+    }
+
+    if (response.ok) return { kind: 'ok' };
+
+    // 404/410 are clear broken links; 5xx is likely unreachable from user perspective.
+    if (response.status === 404 || response.status === 410 || response.status >= 500) {
+      return { kind: 'broken', status: response.status };
+    }
+
+    // Auth, anti-bot, throttling, or policy restrictions are not reliable broken-link signals.
+    if (BOT_OR_POLICY_STATUSES.has(response.status)) {
+      return { kind: 'inconclusive', status: response.status };
+    }
+
+    return { kind: 'inconclusive', status: response.status };
+  } catch {
+    return { kind: 'inconclusive' };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
@@ -68,52 +114,31 @@ export async function POST(req: NextRequest) {
     const links = extractLinks(html, baseUrl);
     const uniqueUrls = [...new Set(links.map(l => l.href))].filter(u => u.startsWith('http'));
     for (let i = 0; i < Math.min(uniqueUrls.length, 30); i++) {
-      try {
-        let res = await fetch(uniqueUrls[i]!, {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(5000),
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Bugtellman QA/1.0)' },
-        });
-        if (res.status === 404) {
-          const getRes = await fetch(uniqueUrls[i]!, {
-            method: 'GET',
-            signal: AbortSignal.timeout(5000),
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Bugtellman QA/1.0)' },
-          });
-          if (getRes.status >= 200 && getRes.status < 300) continue;
-        }
-        if (res.status === 404) {
-          allIssues.push({
-            id: `issue-404-${i}`,
-            category: 'Links',
-            severity: 'high',
-            audience: 'manual',
-            pageUrl: uniqueUrls[i],
-            title: '404 - Page not found',
-            description: `Link returns 404: ${uniqueUrls[i]}`,
-            qaComment: 'I clicked this link and got a 404 error. The page doesn’t exist — it’s either moved, deleted, or the URL is wrong. Users will see a broken page.',
-            fix: 'Update the link to the correct URL, or remove it if the page no longer exists. If the page moved, add a redirect (301) from the old URL.',
-            location: uniqueUrls[i],
-            url: uniqueUrls[i],
-          });
-        } else if (res.status >= 400) {
-          allIssues.push({
-            id: `issue-404-${i}`,
-            category: 'Links',
-            severity: 'medium',
-            audience: 'manual',
-            pageUrl: uniqueUrls[i],
-            title: `Broken link (${res.status})`,
-            description: `Link returns HTTP ${res.status}: ${uniqueUrls[i]}`,
-            qaComment: `This link returns HTTP ${res.status} when I try to open it. It’s not loading correctly — could be a server error, forbidden, or the page was removed.`,
-            fix: 'Check if the URL is correct. If it’s an external link, verify the target site is up. For internal links, fix the path or add proper error handling.',
-            location: uniqueUrls[i],
-            url: uniqueUrls[i],
-          });
-        }
-      } catch {
-        // Skip - could be CORS, timeout, etc.
-      }
+      const url = uniqueUrls[i]!;
+      const outcome = await checkLinkStatus(url);
+
+      if (outcome.kind !== 'broken') continue;
+
+      const isNotFound = outcome.status === 404 || outcome.status === 410;
+      allIssues.push({
+        id: `issue-404-${i}`,
+        category: 'Links',
+        severity: isNotFound ? 'high' : 'medium',
+        audience: 'manual',
+        pageUrl: url,
+        title: isNotFound ? '404 - Page not found' : `Broken link (${outcome.status})`,
+        description: isNotFound
+          ? `Link returns ${outcome.status}: ${url}`
+          : `Link returns HTTP ${outcome.status}: ${url}`,
+        qaComment: isNotFound
+          ? 'I clicked this link and got a not-found error. The page appears missing or moved, so users will hit a dead end.'
+          : `I tried opening this link and got an HTTP ${outcome.status} server error. Users may not be able to access the destination reliably.`,
+        fix: isNotFound
+          ? 'Update the link to the correct URL, or remove it if the page no longer exists. If the page moved, add a redirect (301) from the old URL.'
+          : 'Check the destination service health and URL validity. If this endpoint is temporarily unstable, monitor and retry before shipping.',
+        location: url,
+        url,
+      });
     }
 
     // Discover subpages from same domain
