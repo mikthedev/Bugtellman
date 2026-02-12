@@ -1,10 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { AnalysisResult, QAIssue, Severity } from '@/lib/qa-engine';
 
 interface ResultsPanelProps {
   result: (AnalysisResult & { riskScore?: number; riskLevel?: string }) | null;
+}
+
+/** Group key: same title + category + severity = same issue type (different locations/pages) */
+function issueGroupKey(issue: QAIssue): string {
+  const desc = (issue.description || '').slice(0, 80).trim();
+  return `${issue.title}|${issue.category}|${issue.severity}|${desc}`;
+}
+
+export interface GroupedIssue {
+  representative: QAIssue;
+  count: number;
+  occurrences: QAIssue[];
+}
+
+function groupSimilarIssues(issues: QAIssue[]): GroupedIssue[] {
+  const byKey = new Map<string, QAIssue[]>();
+  for (const issue of issues) {
+    const key = issueGroupKey(issue);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(issue);
+  }
+  return Array.from(byKey.entries()).map(([, occs]) => ({
+    representative: occs[0]!,
+    count: occs.length,
+    occurrences: occs,
+  }));
 }
 
 type SeverityFilter = Severity | 'all';
@@ -67,20 +93,28 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
   );
 }
 
-function ManualIssueCard({ issue, pageScreenshot, analyzedUrl }: { issue: QAIssue; pageScreenshot?: string; analyzedUrl?: string }) {
+function ManualIssueCard({ grouped, pageScreenshot, analyzedUrl }: { grouped: GroupedIssue; pageScreenshot?: string; analyzedUrl?: string }) {
+  const issue = grouped.representative;
   const s = SEVERITY[issue.severity];
   const screenshotUrl = issue.screenshotUrl || pageScreenshot;
   const linkHref = issue.url || issue.location || analyzedUrl;
   const showLink = linkHref && (linkHref.startsWith('http') || linkHref.includes('/'));
+  const multi = grouped.count > 1;
+  const locations = multi ? grouped.occurrences.map(o => o.url || o.location).filter(Boolean) as string[] : [];
 
   return (
     <article className="w-full rounded-xl border border-zinc-700/60 bg-zinc-800/40 p-6 transition-all hover:border-zinc-600/80 hover:bg-zinc-800/50">
-      {/* Header: severity + title + tiny screenshot thumbnail */}
+      {/* Header: severity + title + X occurrences + tiny screenshot thumbnail */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${s.dot}`} />
             <h4 className="text-base font-semibold text-zinc-100">{issue.title}</h4>
+            {multi && (
+              <span className="rounded-full bg-zinc-600/50 px-2.5 py-0.5 text-xs font-medium text-zinc-300">
+                {grouped.count} {grouped.count === 1 ? 'occurrence' : 'occurrences'}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-zinc-500">{getFunnyFlavor(issue.severity)}</p>
         </div>
@@ -129,8 +163,26 @@ function ManualIssueCard({ issue, pageScreenshot, analyzedUrl }: { issue: QAIssu
             <span className="min-w-0 break-all" title={linkHref}>{linkHref}</span>
           </a>
         )}
-        {issue.location && !showLink && (
+        {issue.location && !showLink && !multi && (
           <p className="truncate font-mono text-xs text-zinc-500" title={issue.location}>{issue.location}</p>
+        )}
+
+        {multi && locations.length > 0 && (
+          <details className="rounded-lg border border-zinc-600/60 bg-zinc-900/50">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200">
+              {locations.length} {locations.length === 1 ? 'location' : 'locations'}
+            </summary>
+            <ul className="max-h-40 list-none space-y-1 overflow-y-auto border-t border-zinc-700/60 px-3 py-2">
+              {[...new Set(locations)].slice(0, 15).map((loc, i) => (
+                <li key={i}>
+                  <a href={loc.startsWith('http') ? loc : undefined} target={loc.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="block truncate font-mono text-xs text-[#CAF76F]/90 hover:underline" title={loc}>
+                    {loc}
+                  </a>
+                </li>
+              ))}
+              {locations.length > 15 && <li className="text-xs text-zinc-500">… and {locations.length - 15} more</li>}
+            </ul>
+          </details>
         )}
 
         {issue.fix && (
@@ -146,14 +198,22 @@ function ManualIssueCard({ issue, pageScreenshot, analyzedUrl }: { issue: QAIssu
   );
 }
 
-function TechnicalIssueCard({ issue }: { issue: QAIssue }) {
+function TechnicalIssueCard({ grouped }: { grouped: GroupedIssue }) {
+  const issue = grouped.representative;
   const s = SEVERITY[issue.severity];
+  const multi = grouped.count > 1;
+  const locations = multi ? grouped.occurrences.map(o => o.location || o.url).filter(Boolean) as string[] : [];
 
   return (
     <article className="w-full rounded-xl border border-zinc-700/60 bg-zinc-800/40 p-6 transition-all hover:border-zinc-600/80 hover:bg-zinc-800/50">
-      <div className="flex items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${s.dot}`} />
         <h4 className="text-base font-semibold text-zinc-100">{issue.title}</h4>
+        {multi && (
+          <span className="rounded-full bg-zinc-600/50 px-2.5 py-0.5 text-xs font-medium text-zinc-300">
+            {grouped.count} {grouped.count === 1 ? 'occurrence' : 'occurrences'}
+          </span>
+        )}
       </div>
       <p className="mt-1 text-sm text-zinc-500">{getFunnyFlavor(issue.severity)}</p>
 
@@ -181,7 +241,7 @@ function TechnicalIssueCard({ issue }: { issue: QAIssue }) {
           </div>
         )}
 
-        {issue.location && (
+        {issue.location && !multi && (
           issue.location.startsWith('http') ? (
             <a
               href={issue.location}
@@ -200,6 +260,26 @@ function TechnicalIssueCard({ issue }: { issue: QAIssue }) {
               <pre className="p-4 overflow-x-auto text-sm"><code className="font-mono text-zinc-300">{issue.location}</code></pre>
             </div>
           )
+        )}
+
+        {multi && locations.length > 0 && (
+          <details className="rounded-lg border border-zinc-600/60 bg-zinc-950 overflow-hidden">
+            <summary className="cursor-pointer border-b border-zinc-700/60 bg-zinc-900/50 px-3 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200">
+              {locations.length} {locations.length === 1 ? 'location' : 'locations'}
+            </summary>
+            <ul className="max-h-40 list-none space-y-1 overflow-y-auto p-3">
+              {[...new Set(locations)].slice(0, 15).map((loc, i) => (
+                <li key={i}>
+                  {loc.startsWith('http') ? (
+                    <a href={loc} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-xs text-[#CAF76F]/90 hover:underline" title={loc}>{loc}</a>
+                  ) : (
+                    <pre className="truncate font-mono text-xs text-zinc-300"><code>{loc}</code></pre>
+                  )}
+                </li>
+              ))}
+              {locations.length > 15 && <li className="text-xs text-zinc-500">… and {locations.length - 15} more</li>}
+            </ul>
+          </details>
         )}
 
         {issue.fix && (
@@ -252,6 +332,42 @@ function DudeYoureScrewed({ show }: { show: boolean }) {
   );
 }
 
+function downloadIssuesSheet(result: AnalysisResult & { riskScore?: number; riskLevel?: string }) {
+  const headers = ['#', 'Title', 'Category', 'Severity', 'Audience', 'Description', 'QA comment', 'Why flagged', 'Fix', 'Location', 'URL', 'Line', 'Selector', 'Suggested code', 'Snippet'];
+  const rows = result.issues.map((issue, idx) => ({
+    '#': idx + 1,
+    Title: issue.title,
+    Category: issue.category,
+    Severity: issue.severity,
+    Audience: issue.audience ?? 'technical',
+    Description: (issue.description || '').replace(/\r?\n/g, ' '),
+    'QA comment': (issue.qaComment || '').replace(/\r?\n/g, ' '),
+    'Why flagged': (issue.whyFlagged || '').replace(/\r?\n/g, ' '),
+    Fix: (issue.fix || '').replace(/\r?\n/g, ' '),
+    Location: issue.location || '',
+    URL: issue.url || '',
+    Line: issue.line ?? '',
+    Selector: issue.selector || '',
+    'Suggested code': (issue.suggestedCode || '').replace(/\r?\n/g, ' '),
+    Snippet: (issue.snippet || '').replace(/\r?\n/g, ' '),
+  }));
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => {
+      const v = String((r as Record<string, string | number>)[h] ?? '');
+      const escaped = /[,"\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+      return escaped;
+    }).join(',')),
+  ].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bugtellman-issues-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ResultsPanel({ result }: ResultsPanelProps) {
   const [filter, setFilter] = useState<SeverityFilter>('all');
   const [viewSection, setViewSection] = useState<ViewSection>('manual');
@@ -261,8 +377,15 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
   const showScrewed = issues.length >= ISSUE_COUNT_FOR_SCREWED;
   const technical = issues.filter(i => (i.audience ?? 'technical') === 'technical');
   const manual = issues.filter(i => i.audience === 'manual');
-  const filteredTechnical = filter === 'all' ? technical : technical.filter(i => i.severity === filter);
-  const filteredManual = filter === 'all' ? manual : manual.filter(i => i.severity === filter);
+
+  const { groupedTechnical, groupedManual } = useMemo(() => {
+    const tech = issues.filter(i => (i.audience ?? 'technical') === 'technical');
+    const man = issues.filter(i => i.audience === 'manual');
+    return { groupedTechnical: groupSimilarIssues(tech), groupedManual: groupSimilarIssues(man) };
+  }, [issues]);
+
+  const filteredGroupedTechnical = filter === 'all' ? groupedTechnical : groupedTechnical.filter(g => g.representative.severity === filter);
+  const filteredGroupedManual = filter === 'all' ? groupedManual : groupedManual.filter(g => g.representative.severity === filter);
 
   return (
     <div className="space-y-6">
@@ -270,15 +393,29 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
 
       {/* Results summary header */}
       <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/40 px-5 py-4">
-        <h2 className="text-lg font-semibold text-zinc-100">Results</h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Found {summary.total} {summary.total === 1 ? 'issue' : 'issues'} across {stats.totalPages} {stats.totalPages === 1 ? 'page' : 'pages'} · {stats.brokenLinks} broken links
-        </p>
-        {result.riskScore != null && result.riskLevel && (
-          <p className="mt-1 text-xs text-zinc-500">
-            Page risk: <span className="font-medium text-zinc-400">{result.riskScore}</span> ({result.riskLevel})
-          </p>
-        )}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-100">Results</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              Found {summary.total} {summary.total === 1 ? 'issue' : 'issues'} across {stats.totalPages} {stats.totalPages === 1 ? 'page' : 'pages'} · {stats.brokenLinks} broken links
+            </p>
+            {result.riskScore != null && result.riskLevel && (
+              <p className="mt-1 text-xs text-zinc-500">
+                Page risk: <span className="font-medium text-zinc-400">{result.riskScore}</span> ({result.riskLevel})
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => downloadIssuesSheet(result)}
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-[#CAF76F]/40 bg-[#CAF76F]/10 px-4 py-2.5 text-sm font-medium text-[#CAF76F] transition-colors hover:bg-[#CAF76F]/20 hover:border-[#CAF76F]/60"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download issues sheet
+          </button>
+        </div>
       </div>
 
       {/* Section tabs */}
@@ -297,7 +434,7 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
           </svg>
           <span>Peek-a-Bug</span>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${viewSection === 'manual' ? 'bg-[#CAF76F]/20 text-[#CAF76F]' : 'bg-zinc-600/40 text-zinc-500'}`}>
-            {filteredManual.length}
+            {filteredGroupedManual.length}
           </span>
         </button>
         <button
@@ -314,7 +451,7 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
           </svg>
           <span>Code Crimes</span>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${viewSection === 'technical' ? 'bg-[#CAF76F]/20 text-[#CAF76F]' : 'bg-zinc-600/40 text-zinc-500'}`}>
-            {filteredTechnical.length}
+            {filteredGroupedTechnical.length}
           </span>
         </button>
       </div>
@@ -370,14 +507,14 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
             </details>
           )}
           <div className="space-y-5">
-            {filteredManual.length === 0 ? (
+            {filteredGroupedManual.length === 0 ? (
               <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/30 py-16 px-6 text-center">
                 <p className="text-base font-medium text-zinc-400">No issues in this category</p>
                 <p className="mt-1 text-sm text-zinc-500">Try selecting &quot;All&quot; or a different severity filter</p>
               </div>
             ) : (
-              filteredManual.map((issue, i) => (
-                <ManualIssueCard key={issue.id || `m-${i}`} issue={issue} pageScreenshot={pageScreenshot} analyzedUrl={result.analyzedUrl} />
+              filteredGroupedManual.map((grouped, i) => (
+                <ManualIssueCard key={grouped.representative.id || `m-${i}`} grouped={grouped} pageScreenshot={pageScreenshot} analyzedUrl={result.analyzedUrl} />
               ))
             )}
           </div>
@@ -386,14 +523,14 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
 
       {viewSection === 'technical' && (
         <section className="space-y-5">
-          {filteredTechnical.length === 0 ? (
+          {filteredGroupedTechnical.length === 0 ? (
             <div className="rounded-xl border border-zinc-700/60 bg-zinc-800/30 py-16 px-6 text-center">
               <p className="text-base font-medium text-zinc-400">No code issues in this category</p>
               <p className="mt-1 text-sm text-zinc-500">Try selecting &quot;All&quot; or a different severity filter</p>
             </div>
           ) : (
-            filteredTechnical.map((issue, i) => (
-              <TechnicalIssueCard key={issue.id || `t-${i}`} issue={issue} />
+            filteredGroupedTechnical.map((grouped, i) => (
+              <TechnicalIssueCard key={grouped.representative.id || `t-${i}`} grouped={grouped} />
             ))
           )}
         </section>
