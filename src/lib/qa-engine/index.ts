@@ -11,7 +11,7 @@ export async function analyzeWebsite(
   const allIssues: QAIssue[] = [];
   const htmlFiles = files.filter(f => f.type === 'html');
   const cssFiles = files.filter(f => f.type === 'css');
-  const totalSteps = htmlFiles.length + cssFiles.length + (options?.check404 ? 1 : 0);
+  const totalSteps = Math.max(1, htmlFiles.length + cssFiles.length + (options?.check404 ? 1 : 0));
   let progress = 0;
 
   // Analyze HTML files

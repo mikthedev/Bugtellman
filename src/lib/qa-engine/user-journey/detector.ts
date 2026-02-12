@@ -196,5 +196,9 @@ export function detectFlows(
     for (const f of detectSameOriginLinks($, baseUrl, origin, options?.maxContentLinks ?? 20)) add(f);
   }
 
-  return flows;
+  // Stable order so the same HTML always yields the same flows (consistent User Journey results)
+  return flows.slice().sort((a, b) => {
+    const key = (f: DetectedFlow) => `${f.type}:${f.selector}:${f.href ?? ''}:${f.action ?? ''}`;
+    return key(a).localeCompare(key(b));
+  });
 }

@@ -6,12 +6,14 @@
  * 2. State Testing Engine
  * 3. Visual Regression Detector
  * 4. Performance Behavior Detector
+ * 5. Auth (Login/Register) deep check
  */
 
 import { runUserJourneyTest } from '../user-journey';
 import { runStateTests } from '../state-testing';
 import { runVisualRegression } from '../visual-regression';
 import { runPerformanceDetection } from '../performance';
+import { runAuthCheck } from '../auth-check';
 
 export interface AutomatedTestResult {
   userJourney: {
@@ -26,12 +28,15 @@ export interface AutomatedTestResult {
   performance: {
     metrics: import('../performance').PerformanceMetric[];
   };
+  /** Login/register discovery and deep checks (form structure, security, a11y) */
+  authCheck: import('../auth-check').AuthCheckResult;
   /** Passed/total and failure counts for UI summary */
   summary: {
     userJourney: { passed: number; total: number; secondLevelPassed: number; secondLevelTotal: number };
     stateTesting: { passed: number; total: number; withFailures: number };
     visualRegression: { diffCount: number };
     performance: { slowCount: number; total: number; thresholdMs: number };
+    authCheck: { found: boolean; issuesCount: number; highOrUrgentCount: number };
   };
 }
 
@@ -44,6 +49,10 @@ export interface AutomatedTestOptions {
   multiStep?: boolean;
   /** Consider nav/request slow above this ms for summary */
   slowThresholdMs?: number;
+  /** Full page URL that was fetched (for auth check context); defaults to baseUrl */
+  pageUrl?: string;
+  /** Whether to fetch discovered auth pages for deep check; default true */
+  authCheckFetchPages?: boolean;
 }
 
 /** Run all automated QA tests */
@@ -53,7 +62,8 @@ export async function runAutomatedTests(
   options?: AutomatedTestOptions
 ): Promise<AutomatedTestResult> {
   const opts = options ?? {};
-  const [userJourney, stateTesting, visualRegression, performance] = await Promise.all([
+  const pageUrl = opts.pageUrl ?? baseUrl;
+  const [userJourney, stateTesting, visualRegression, performance, authCheck] = await Promise.all([
     runUserJourneyTest(html, baseUrl, opts.maxFlows ?? 25, {
       includeContentLinks: opts.includeContentLinks ?? true,
       multiStep: opts.multiStep ?? true,
@@ -62,6 +72,10 @@ export async function runAutomatedTests(
     runStateTests(html, baseUrl, opts.maxInputs ?? 8),
     Promise.resolve(runVisualRegression(html, baseUrl, opts.previousSnapshot)),
     runPerformanceDetection(html, baseUrl, { maxNavLinks: opts.maxNavLinks ?? 8 }),
+    runAuthCheck(html, baseUrl, pageUrl, {
+      fetchAuthPages: opts.authCheckFetchPages ?? true,
+      maxAuthPagesToFetch: 5,
+    }),
   ]);
 
   const ujResults = userJourney.results;
@@ -93,6 +107,7 @@ export async function runAutomatedTests(
       visualDiffs: visualRegression.visualDiffs,
     },
     performance: { metrics: performance.metrics },
+    authCheck,
     summary: {
       userJourney: {
         passed: ujPassed,
@@ -103,6 +118,11 @@ export async function runAutomatedTests(
       stateTesting: { passed: statePassed, total: stateTotal, withFailures: stateWithFailures },
       visualRegression: { diffCount: visualRegression.visualDiffs.length },
       performance: { slowCount, total: perfTotal, thresholdMs: slowThreshold },
+      authCheck: {
+        found: authCheck.found,
+        issuesCount: authCheck.summary.issuesCount,
+        highOrUrgentCount: authCheck.summary.highOrUrgentCount,
+      },
     },
   };
 }

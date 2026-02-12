@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
 
     const result = await runAutomatedTests(html, parsedUrl.origin, {
       previousSnapshot: previousSnapshot as import('@/lib/qa-engine/visual-regression').DOMSnapshot | undefined,
+      pageUrl: parsedUrl.href,
     });
 
     return NextResponse.json(result);

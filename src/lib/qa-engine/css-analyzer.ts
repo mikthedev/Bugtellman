@@ -98,11 +98,11 @@ export function analyzeCSS(css: string, filename?: string): QAIssue[] {
       category: 'Responsive Design',
       severity: 'medium',
       audience: 'manual',
-      title: 'No media queries found',
-      description: 'CSS file has no responsive breakpoints. Layout may not adapt to different screen sizes.',
+      title: 'No media queries in this CSS file',
+      description: 'This file has no @media rules. If it is the main or only stylesheet, layout may not adapt to small screens — verify on a real device or in DevTools device mode.',
       location: filename,
-      qaComment: 'I tested on mobile and the layout didn’t adapt — it looked like a scaled-down desktop. There are no media queries in this CSS file.',
-      whyFlagged: 'The parser found no @media rules in a CSS file over 500 characters. Without responsive breakpoints, the layout will not adapt to different viewport widths. Mobile users will see a zoomed-out desktop layout.',
+      qaComment: 'This stylesheet has no responsive breakpoints. I didn’t render the page on phone dimensions — other stylesheets or inline styles might still provide mobile layout. Verify on a real device to confirm whether the phone layout is actually wrong.',
+      whyFlagged: 'The parser found no @media rules in this CSS file (over 1500 chars). If other stylesheets also have no breakpoints, the layout may not adapt. Actual viewport dimensions were not measured.',
       fix: 'Add breakpoints for common widths. Use flex-wrap, max-width, and relative units (%, rem) to make layouts fluid.',
       suggestedCode: `/* Mobile-first breakpoints */
 @media (max-width: 768px) {
@@ -125,10 +125,10 @@ export function analyzeCSS(css: string, filename?: string): QAIssue[] {
         category: 'Responsive Design',
         severity: 'low',
         audience: 'manual',
-        title: 'Fixed width may cause horizontal scroll on mobile',
-        description: `Fixed width of ${width}px may overflow on smaller screens.`,
+        title: 'Fixed width may cause horizontal scroll on narrow viewports',
+        description: `Fixed width of ${width}px may overflow on viewports narrower than this — verify on a real device or in DevTools device mode.`,
         location: filename,
-        qaComment: `There’s a fixed width of ${width}px. On phones (320–428px wide), this will cause horizontal scrolling, which feels broken.`,
+        qaComment: `This file sets a fixed width of ${width}px. On narrow viewports (e.g. phones) that can cause horizontal scroll if the element isn't overridden elsewhere. I didn't measure actual phone dimensions — verify on a device to confirm.`,
         fix: 'Use max-width instead of width, or width: 100% with max-width. Prefer rem or % for fluid layouts.',
       });
     }

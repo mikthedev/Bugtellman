@@ -81,7 +81,7 @@ export function analyzeHTML(html: string, baseUrl?: string, pageUrl?: string): Q
       title: 'Missing lang attribute on <html>',
       description: 'The html element should have a lang attribute for screen readers and translation tools.',
       selector: 'html',
-      qaComment: 'I ran this through accessibility checks and the <html> tag is missing the lang attribute. Screen readers rely on this to know the page language, and it also helps with translation tools and SEO.',
+      qaComment: '🪲 The <html> tag is missing its lang attribute! Screen readers need this to know what language to speak, and it helps translation tools too. It\'s like a bug that forgot to introduce itself properly.',
       whyFlagged: 'The parser detected an <html> element without a lang attribute. The HTML5 spec requires this for document language declaration. Screen readers, translation tools, and browsers use it for pronunciation and language-specific behavior.',
       fix: 'Add lang="en" (or your page language, e.g. lang="es" for Spanish) to the opening <html> tag.',
       suggestedCode: '<html lang="en">',
@@ -104,13 +104,13 @@ export function analyzeHTML(html: string, baseUrl?: string, pageUrl?: string): Q
       title: isSpa ? 'Viewport meta not found in initial HTML' : 'Missing viewport meta tag',
       description: isSpa
         ? 'No viewport meta in initial HTML. If your framework injects it at runtime, this may be fine.'
-        : 'Without a viewport meta tag, mobile devices will render the page at desktop width.',
+        : 'No viewport meta tag was found. Without it, mobile browsers typically assume a ~980px viewport and scale the page down — verify on a real device or in DevTools device mode.',
       qaComment: isSpa
         ? "I didn't see a viewport meta in the raw HTML. If you use React, Vue, or similar, your framework may add it — verify on a real device."
-        : "I tested on mobile and the page was zoomed out like a desktop site — it’s because the viewport meta tag is missing. Users on phones will have to pinch-to-zoom to read anything, which is bad UX.",
+        : "The HTML has no viewport meta tag. Without it, mobile browsers usually render at desktop width; users may have to pinch-to-zoom. I didn't render the page on a real phone — verify on a device or in DevTools to confirm if the layout is actually wrong.",
       whyFlagged: isSpa
         ? 'The parser found no <meta name="viewport"> in the initial HTML. SPAs often inject it; verify in the browser.'
-        : 'The parser found no <meta name="viewport"> in the document. Without it, mobile browsers assume a ~980px wide viewport and scale the page down.',
+        : 'The parser found no <meta name="viewport"> in the document. Without it, mobile browsers assume a ~980px wide viewport and scale the page down. Actual phone layout was not rendered or measured.',
       fix: isSpa
         ? 'If your framework does not add viewport, add <meta name="viewport" content="width=device-width, initial-scale=1"> in your index.html or root template.'
         : 'Add the viewport meta tag inside your <head>: <meta name="viewport" content="width=device-width, initial-scale=1">',
@@ -185,6 +185,7 @@ export function analyzeHTML(html: string, baseUrl?: string, pageUrl?: string): Q
         severity: 'low',
         audience: 'manual',
         pageUrl,
+        selector: sel,
         screenshotSelector: sel,
         title: 'Placeholder or empty link',
         description: `Link uses "${href}" - may be placeholder or non-functional.`,
@@ -366,6 +367,8 @@ export function extractLinks(html: string, baseUrl?: string): { href: string; te
           fullUrl = href;
         }
       }
+      // Skip Cloudflare (and similar) email-protection links to avoid exposing obfuscated emails
+      if (/email-protection/i.test(fullUrl)) return;
       links.push({ href: fullUrl, text: $(el).text().trim() });
     }
   });

@@ -123,7 +123,8 @@ async function runSecondLevel(
     const html = await res.text();
     const innerFlows = detectFlows(html, baseUrl, { includePrimaryNav: true, includeContentLinks: false })
       .filter((f): f is DetectedFlow & { href: string } => f.type === 'nav' && !!f.href)
-      .slice(0, maxInner);
+      .slice(0, maxInner)
+      .sort((a, b) => (a.href ?? '').localeCompare(b.href ?? ''));
     for (const flow of innerFlows) {
       const href = flow.href!;
       const start = performance.now();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { analyzeHTML, analyzeCSS, extractLinks } from '@/lib/qa-engine';
+import { runAuthCheck } from '@/lib/qa-engine/auth-check';
 import { runValidationPipeline, mergeValidationIntoResult } from '@/lib/engine';
 
 type LinkCheckOutcome =
@@ -9,6 +10,11 @@ type LinkCheckOutcome =
   | { kind: 'inconclusive'; status?: number };
 
 const BOT_OR_POLICY_STATUSES = new Set([401, 403, 405, 429]);
+
+/** Hide issues that reference email-protection (e.g. Cloudflare) links to avoid exposing obfuscated emails. */
+function isEmailProtectionUrl(s: string | undefined): boolean {
+  return !!s && /email-protection/i.test(s);
+}
 
 async function checkLinkStatus(url: string): Promise<LinkCheckOutcome> {
   const requestInit = {
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     const baseUrl = parsedUrl.origin;
-    const allIssues: Awaited<ReturnType<typeof analyzeHTML>>[number][] = [];
+    let allIssues: Awaited<ReturnType<typeof analyzeHTML>>[number][] = [];
 
     // Fetch main page
     const mainRes = await fetch(parsedUrl.href, {
@@ -84,14 +90,16 @@ export async function POST(req: NextRequest) {
     // Analyze main HTML
     allIssues.push(...analyzeHTML(html, baseUrl, parsedUrl.href));
 
-    // Fetch and analyze linked CSS
+    // Fetch and analyze linked CSS; track which files have @media so we don't falsely claim "no responsive CSS"
     const cssLinks = $('link[rel="stylesheet"]').map((_, el) => $(el).attr('href')).get();
+    const pageHasMediaQueriesInSomeCss = { current: false };
     for (const href of cssLinks.slice(0, 10)) {
       try {
         const cssUrl = new URL(href, baseUrl).href;
         const cssRes = await fetch(cssUrl, { signal: AbortSignal.timeout(5000) });
         if (cssRes.ok) {
           const css = await cssRes.text();
+          if (/@media\s/i.test(css)) pageHasMediaQueriesInSomeCss.current = true;
           allIssues.push(...analyzeCSS(css, cssUrl));
         }
       } catch {
@@ -107,6 +115,10 @@ export async function POST(req: NextRequest) {
           location: href,
         });
       }
+    }
+    // If at least one stylesheet has @media, don't report "no media queries" — the site has responsive CSS
+    if (pageHasMediaQueriesInSomeCss.current) {
+      allIssues = allIssues.filter((i) => i.title !== 'No media queries in this CSS file');
     }
 
     // Check links for 404
@@ -156,7 +168,7 @@ export async function POST(req: NextRequest) {
               return null;
             }
           })
-          .filter((p): p is string => !!p && p !== '/' && !p.startsWith('#'))
+          .filter((p): p is string => !!p && p !== '/' && !p.startsWith('#') && !/email-protection/i.test(p))
       )
     ).slice(0, 5);
 
@@ -197,6 +209,28 @@ export async function POST(req: NextRequest) {
     const totalImages = (html.match(/<img[^>]*>/gi) || []).length;
     const imagesWithoutAlt = (html.match(/<img(?![^>]*alt=)[^>]*>/gi) || []).length;
 
+    // Deep check for login/register flows (discovery + form structure, security, a11y)
+    const authCheck = await runAuthCheck(html, baseUrl, parsedUrl.href, {
+      fetchAuthPages: true,
+      maxAuthPagesToFetch: 5,
+    });
+    for (const issue of authCheck.issues) {
+      allIssues.push({
+        ...issue,
+        pageUrl: issue.pageUrl || issue.url || parsedUrl.href,
+        url: issue.url || issue.pageUrl || parsedUrl.href,
+        location: issue.url || issue.selector || 'Login/Register',
+      });
+    }
+
+    // Never show issues that reference email-protection links (could expose obfuscated emails)
+    allIssues = allIssues.filter(
+      (i) =>
+        !isEmailProtectionUrl(i.url) &&
+        !isEmailProtectionUrl(i.pageUrl) &&
+        !isEmailProtectionUrl(i.location)
+    );
+
     // Run validation pipeline: detector → validation → scoring → decision
     const { issues: validatedIssues, risk } = runValidationPipeline(allIssues);
     const severityOrder = ['urgent', 'high', 'medium', 'low', 'minor'] as const;
@@ -208,50 +242,93 @@ export async function POST(req: NextRequest) {
     const manualIssues = validatedIssues.filter(
       (i) => i.audience === 'manual' && i.verdict !== 'ignore'
     );
-    const screenshotLimit = 8;
-    for (let idx = 0; idx < Math.min(manualIssues.length, screenshotLimit); idx++) {
-      const issue = manualIssues[idx]!;
+    
+    // Track unique selector+pageUrl combinations to avoid duplicate screenshots
+    const screenshotCache = new Map<string, string>();
+    
+    // Prioritize issues with selectors for element screenshots
+    const issuesWithSelectors = manualIssues.filter(
+      (i) => i.screenshotSelector || i.selector
+    );
+    const issuesWithoutSelectors = manualIssues.filter(
+      (i) => !i.screenshotSelector && !i.selector
+    );
+    // Process selector-based issues first, then others
+    const prioritizedIssues = [...issuesWithSelectors, ...issuesWithoutSelectors];
+    
+    const screenshotLimit = 15; // Increased limit to capture more element screenshots
+    let screenshotsGenerated = 0;
+    
+    for (let idx = 0; idx < prioritizedIssues.length && screenshotsGenerated < screenshotLimit; idx++) {
+      const issue = prioritizedIssues[idx]!;
       try {
         let screenshotUrl: string | undefined;
         const targetUrl = issue.pageUrl || issue.url || parsedUrl.href;
+        
+        // Use selector or screenshotSelector (selector takes precedence as it's more reliable)
+        const elementSelector = issue.selector || issue.screenshotSelector;
+        
+        // Create cache key for this selector+pageUrl combination
+        const cacheKey = elementSelector && targetUrl 
+          ? `${targetUrl}::${elementSelector}` 
+          : targetUrl || '';
 
         if (issue.url && (issue.title.includes('404') || issue.title.includes('Broken link'))) {
           // 404/broken: screenshot the error page
-          const res = await fetch(
-            `https://api.microlink.io/?url=${encodeURIComponent(issue.url)}&screenshot=true&meta=false`,
-            { signal: AbortSignal.timeout(6000) }
-          );
-          const data = await res.json();
-          if (data?.status === 'success' && data?.data?.screenshot?.url) {
-            screenshotUrl = data.data.screenshot.url;
+          const cacheKey404 = `404::${issue.url}`;
+          if (screenshotCache.has(cacheKey404)) {
+            screenshotUrl = screenshotCache.get(cacheKey404);
+          } else {
+            const res = await fetch(
+              `https://api.microlink.io/?url=${encodeURIComponent(issue.url)}&screenshot=true&meta=false`,
+              { signal: AbortSignal.timeout(6000) }
+            );
+            const data = await res.json();
+            if (data?.status === 'success' && data?.data?.screenshot?.url) {
+              screenshotUrl = data.data.screenshot.url;
+              screenshotCache.set(cacheKey404, screenshotUrl);
+              screenshotsGenerated++;
+            }
           }
-        } else if (issue.screenshotSelector && targetUrl) {
-          // Element screenshot
-          const params = new URLSearchParams({
-            url: targetUrl,
-            screenshot: 'true',
-            'screenshot.element': issue.screenshotSelector,
-            meta: 'false',
-          });
-          if (issue.screenshotDevice) {
-            params.set('device', issue.screenshotDevice);
-          }
-          const res = await fetch(`https://api.microlink.io/?${params}`, {
-            signal: AbortSignal.timeout(8000),
-          });
-          const data = await res.json();
-          if (data?.status === 'success' && data?.data?.screenshot?.url) {
-            screenshotUrl = data.data.screenshot.url;
+        } else if (elementSelector && targetUrl) {
+          // Element screenshot - prioritize this for pinpointed issues
+          if (screenshotCache.has(cacheKey)) {
+            screenshotUrl = screenshotCache.get(cacheKey);
+          } else {
+            const params = new URLSearchParams({
+              url: targetUrl,
+              screenshot: 'true',
+              'screenshot.element': elementSelector,
+              meta: 'false',
+            });
+            if (issue.screenshotDevice) {
+              params.set('device', issue.screenshotDevice);
+            }
+            const res = await fetch(`https://api.microlink.io/?${params}`, {
+              signal: AbortSignal.timeout(12000), // Increased timeout for element screenshots
+            });
+            const data = await res.json();
+            if (data?.status === 'success' && data?.data?.screenshot?.url) {
+              screenshotUrl = data.data.screenshot.url;
+              screenshotCache.set(cacheKey, screenshotUrl);
+              screenshotsGenerated++;
+            }
           }
         } else if (targetUrl && !issue.screenshotUrl) {
-          // Fallback: full page screenshot
-          const res = await fetch(
-            `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&meta=false`,
-            { signal: AbortSignal.timeout(6000) }
-          );
-          const data = await res.json();
-          if (data?.status === 'success' && data?.data?.screenshot?.url) {
-            screenshotUrl = data.data.screenshot.url;
+          // Fallback: full page screenshot (only if not already cached)
+          if (!screenshotCache.has(cacheKey)) {
+            const res = await fetch(
+              `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&meta=false`,
+              { signal: AbortSignal.timeout(6000) }
+            );
+            const data = await res.json();
+            if (data?.status === 'success' && data?.data?.screenshot?.url) {
+              screenshotUrl = data.data.screenshot.url;
+              screenshotCache.set(cacheKey, screenshotUrl);
+              screenshotsGenerated++;
+            }
+          } else {
+            screenshotUrl = screenshotCache.get(cacheKey);
           }
         }
 

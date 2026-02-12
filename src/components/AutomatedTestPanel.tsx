@@ -9,10 +9,11 @@ interface AutomatedTestPanelProps {
 export function AutomatedTestPanel({ result }: AutomatedTestPanelProps) {
   if (!result) return null;
 
-  const { userJourney, stateTesting, visualRegression, performance, summary } = result;
+  const { userJourney, stateTesting, visualRegression, performance, authCheck, summary } = result;
   const ujPassed = summary?.userJourney?.passed ?? userJourney.results.filter(r => r.success).length;
   const ujTotal = summary?.userJourney?.total ?? userJourney.results.length;
   const secondLevel = summary?.userJourney;
+  const authSummary = summary?.authCheck ?? authCheck?.summary;
 
   return (
     <div className="space-y-6">
@@ -28,16 +29,24 @@ export function AutomatedTestPanel({ result }: AutomatedTestPanelProps) {
             )}
           </span>
           <span className="text-zinc-400">
-            State tests: <strong className={summary.stateTesting.withFailures === 0 ? 'text-emerald-400' : 'text-amber-400'}>{summary.stateTesting.passed}/{summary.stateTesting.total}</strong>
-            {summary.stateTesting.withFailures > 0 && (
-              <span className="text-amber-400"> · {summary.stateTesting.withFailures} with issues</span>
+            State tests: <strong className={(summary.stateTesting?.withFailures ?? 0) === 0 ? 'text-emerald-400' : 'text-amber-400'}>{summary.stateTesting?.passed ?? 0}/{summary.stateTesting?.total ?? 0}</strong>
+            {(summary.stateTesting?.withFailures ?? 0) > 0 && (
+              <span className="text-amber-400"> · {summary.stateTesting?.withFailures} with issues</span>
             )}
           </span>
-          {summary.visualRegression.diffCount > 0 && (
-            <span className="text-amber-400">Visual diffs: {summary.visualRegression.diffCount}</span>
+          {(summary.visualRegression?.diffCount ?? 0) > 0 && (
+            <span className="text-amber-400">Visual diffs: {summary.visualRegression?.diffCount}</span>
           )}
-          {summary.performance.slowCount > 0 && (
-            <span className="text-amber-400">Slow (&gt;{summary.performance.thresholdMs}ms): {summary.performance.slowCount}/{summary.performance.total}</span>
+          {(summary.performance?.slowCount ?? 0) > 0 && (
+            <span className="text-amber-400">Slow (&gt;{summary.performance?.thresholdMs ?? 0}ms): {summary.performance?.slowCount}/{summary.performance?.total}</span>
+          )}
+          {authSummary && (
+            <span className="text-zinc-400">
+              Auth (login/register): {authSummary.found ? 'found' : 'none'} · {authSummary.issuesCount} issue(s)
+              {authSummary.highOrUrgentCount > 0 && (
+                <span className="text-amber-400"> · {authSummary.highOrUrgentCount} high/urgent</span>
+              )}
+            </span>
           )}
         </div>
       )}
@@ -84,7 +93,7 @@ export function AutomatedTestPanel({ result }: AutomatedTestPanelProps) {
         <h3 className="text-sm font-semibold text-zinc-300">State Testing</h3>
         <p className="mt-1 text-xs text-zinc-500">
           {stateTesting.length} input state(s) tested
-          {summary && summary.stateTesting.withFailures > 0 && ` · ${summary.stateTesting.withFailures} with validation issues`}
+          {summary && (summary.stateTesting?.withFailures ?? 0) > 0 && ` · ${summary.stateTesting.withFailures} with validation issues`}
         </p>
         <div className="mt-3 space-y-2">
           {stateTesting.slice(0, 12).map((s, i) => (
@@ -117,6 +126,52 @@ export function AutomatedTestPanel({ result }: AutomatedTestPanelProps) {
           <p className="mt-2 text-xs text-zinc-500">No visual regressions detected</p>
         )}
       </section>
+
+      {/* Auth (Login/Register) deep check */}
+      {authCheck && (
+        <section className="rounded-xl border border-zinc-700/60 bg-zinc-800/40 px-5 py-4">
+          <h3 className="text-sm font-semibold text-zinc-300">Login / Register check</h3>
+          <p className="mt-1 text-xs text-zinc-500">
+            {authCheck.found
+              ? `${authCheck.discoveries.length} auth flow(s) found · ${authCheck.summary.loginFound ? 'Login' : ''}${authCheck.summary.loginFound && authCheck.summary.registerFound ? ' · ' : ''}${authCheck.summary.registerFound ? 'Register' : ''}`
+              : 'No login/register links or forms detected on this page'}
+            {authCheck.summary.loginFound && (
+              <span className="block mt-1 text-zinc-500">Login forms are submitted with invalid credentials to detect faulty acceptance. Email, phone, and other fields are tested with invalid input (e.g. numbers in email, letters in phone, empty/short values) to check validation.</span>
+            )}
+          </p>
+          {authCheck.found && authCheck.discoveries.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {authCheck.discoveries.map((d, i) => (
+                <span
+                  key={i}
+                  className="rounded-md border border-zinc-600/60 bg-zinc-800/60 px-2.5 py-1 text-xs text-zinc-300"
+                >
+                  {d.kind}: {d.label} ({d.inferredType})
+                </span>
+              ))}
+            </div>
+          )}
+          {authCheck.issues.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-medium text-zinc-400">{authCheck.issues.length} issue(s) from deep check</p>
+              {authCheck.issues.map((issue) => (
+                <div
+                  key={issue.id}
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    issue.severity === 'urgent' || issue.severity === 'high'
+                      ? 'border-red-500/30 bg-red-500/5'
+                      : 'border-amber-500/30 bg-amber-500/5'
+                  }`}
+                >
+                  <span className="font-medium capitalize text-zinc-200">{issue.severity}</span> · {issue.title}
+                  <p className="mt-1 text-zinc-500">{issue.description}</p>
+                  {issue.fix && <p className="mt-1 text-zinc-400">Fix: {issue.fix}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Performance */}
       <section className="rounded-xl border border-zinc-700/60 bg-zinc-800/40 px-5 py-4">
