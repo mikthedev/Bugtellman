@@ -26,7 +26,7 @@ const VALID_DUMMY = {
 /** Input classification from type/name */
 type FieldKind = 'email' | 'phone' | 'password' | 'username' | 'text';
 
-function classifyInput($el: cheerio.Cheerio<cheerio.Element>): FieldKind {
+function classifyInput($el: cheerio.Cheerio<cheerio.AnyNode>): FieldKind {
   const type = ($el.attr('type') || 'text').toLowerCase();
   const name = ($el.attr('name') || '').toLowerCase();
   if (type === 'email') return 'email';
