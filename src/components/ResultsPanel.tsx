@@ -559,7 +559,7 @@ export function ResultsPanel({ result }: ResultsPanelProps) {
   const [filter, setFilter] = useState<SeverityFilter>('all');
   const [viewSection, setViewSection] = useState<ViewSection>('manual');
   
-  const issues = result?.issues ?? [];
+  const issues = useMemo(() => result?.issues ?? [], [result?.issues]);
   const summary = result?.summary ?? DEFAULT_SUMMARY;
   const stats = result?.stats ?? DEFAULT_STATS;
   const pageScreenshot = result?.pageScreenshot;

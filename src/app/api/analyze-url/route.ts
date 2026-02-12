@@ -285,8 +285,9 @@ export async function POST(req: NextRequest) {
             );
             const data = await res.json();
             if (data?.status === 'success' && data?.data?.screenshot?.url) {
-              screenshotUrl = data.data.screenshot.url;
-              screenshotCache.set(cacheKey404, screenshotUrl);
+              const url = data.data.screenshot.url;
+              screenshotUrl = url;
+              screenshotCache.set(cacheKey404, url);
               screenshotsGenerated++;
             }
           }
@@ -309,8 +310,9 @@ export async function POST(req: NextRequest) {
             });
             const data = await res.json();
             if (data?.status === 'success' && data?.data?.screenshot?.url) {
-              screenshotUrl = data.data.screenshot.url;
-              screenshotCache.set(cacheKey, screenshotUrl);
+              const url = data.data.screenshot.url;
+              screenshotUrl = url;
+              screenshotCache.set(cacheKey, url);
               screenshotsGenerated++;
             }
           }
@@ -323,8 +325,9 @@ export async function POST(req: NextRequest) {
             );
             const data = await res.json();
             if (data?.status === 'success' && data?.data?.screenshot?.url) {
-              screenshotUrl = data.data.screenshot.url;
-              screenshotCache.set(cacheKey, screenshotUrl);
+              const url = data.data.screenshot.url;
+              screenshotUrl = url;
+              screenshotCache.set(cacheKey, url);
               screenshotsGenerated++;
             }
           } else {
