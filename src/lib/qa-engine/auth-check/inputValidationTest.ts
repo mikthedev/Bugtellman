@@ -7,7 +7,7 @@
  */
 
 import * as cheerio from 'cheerio';
-import type { Element } from 'domhandler';
+import type { AnyNode, Element } from 'domhandler';
 import type { QAIssue } from '../types';
 import type { AuthDiscovery } from './types';
 import { createAuthCheckIssue } from './checker';
@@ -27,9 +27,29 @@ const VALID_DUMMY = {
 /** Input classification from type/name */
 type FieldKind = 'email' | 'phone' | 'password' | 'username' | 'text';
 
-function classifyInput($el: cheerio.Cheerio<Element>): FieldKind {
+/**
+ * Type guard to check if a node is an Element
+ */
+function isElement(node: AnyNode): node is Element {
+  return node.type === 'tag';
+}
+
+/**
+ * Classify input field type based on element attributes.
+ * Accepts Cheerio<AnyNode> - cheerio's attr() method works on AnyNode
+ * and returns undefined for non-elements, which we handle gracefully.
+ */
+function classifyInput($el: cheerio.Cheerio<AnyNode>): FieldKind {
+  // Verify we have an Element node before processing
+  const nodes = $el.toArray();
+  if (nodes.length === 0 || !isElement(nodes[0])) {
+    return 'text';
+  }
+  
+  // Use cheerio's API which safely handles AnyNode types
   const type = ($el.attr('type') || 'text').toLowerCase();
   const name = ($el.attr('name') || '').toLowerCase();
+  
   if (type === 'email') return 'email';
   if (type === 'tel' || /phone|tel|mobile|cell/i.test(name)) return 'phone';
   if (type === 'password') return 'password';
