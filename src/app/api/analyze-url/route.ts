@@ -57,7 +57,13 @@ async function checkLinkStatus(url: string): Promise<LinkCheckOutcome> {
 
 export async function POST(req: NextRequest) {
   try {
+    // #region agent log
+    console.log('[DEBUG] analyze-url POST called');
+    // #endregion
     const { url } = await req.json();
+    // #region agent log
+    console.log('[DEBUG] analyze-url received url:', url);
+    // #endregion
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
@@ -232,7 +238,13 @@ export async function POST(req: NextRequest) {
     );
 
     // Run validation pipeline: detector → validation → scoring → decision
+    // #region agent log
+    console.log('[DEBUG] Running validation pipeline, issues count:', allIssues.length);
+    // #endregion
     const { issues: validatedIssues, risk } = runValidationPipeline(allIssues);
+    // #region agent log
+    console.log('[DEBUG] Validation complete, validated issues:', validatedIssues.length, 'risk:', risk);
+    // #endregion
     const severityOrder = ['urgent', 'high', 'medium', 'low', 'minor'] as const;
     validatedIssues.sort((a, b) =>
       severityOrder.indexOf(a.severity) - severityOrder.indexOf(b.severity)
@@ -377,9 +389,12 @@ export async function POST(req: NextRequest) {
       true
     );
 
+    // #region agent log
+    console.log('[DEBUG] analyze-url returning result, issues:', result.issues?.length || 0);
+    // #endregion
     return NextResponse.json(result);
   } catch (err) {
-    console.error(err);
+    console.error('[DEBUG] analyze-url error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Analysis failed' },
       { status: 500 }

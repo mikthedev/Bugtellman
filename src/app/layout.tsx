@@ -30,6 +30,9 @@ const phonk = localFont({
   variable: '--font-phonk',
   display: 'swap',
 })
+// #region agent log
+console.log('[DEBUG] Phonk font variable:', phonk.variable);
+// #endregion
 
 export const metadata: Metadata = {
   title: 'Bugtellman — Intelligent QA for Websites',

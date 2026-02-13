@@ -6,8 +6,14 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    // #region agent log
+    console.log('[DEBUG] qa-test POST called');
+    // #endregion
     const body = await req.json();
     const { url, previousSnapshot } = body as { url?: string; previousSnapshot?: object };
+    // #region agent log
+    console.log('[DEBUG] qa-test received url:', url, 'hasSnapshot:', !!previousSnapshot);
+    // #endregion
 
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
@@ -34,14 +40,20 @@ export async function POST(req: NextRequest) {
 
     const html = await response.text();
 
+    // #region agent log
+    console.log('[DEBUG] Running automated tests');
+    // #endregion
     const result = await runAutomatedTests(html, parsedUrl.origin, {
       previousSnapshot: previousSnapshot as import('@/lib/qa-engine/visual-regression').DOMSnapshot | undefined,
       pageUrl: parsedUrl.href,
     });
+    // #region agent log
+    console.log('[DEBUG] Automated tests complete, has result:', !!result);
+    // #endregion
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error(err);
+    console.error('[DEBUG] qa-test error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'QA test failed' },
       { status: 500 }

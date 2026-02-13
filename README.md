@@ -1,5 +1,7 @@
 # Bugtellman — Intelligent QA for Websites
 
+**Catch the bugs before they catch you.**
+
 An intelligent QA tool that analyzes websites for bugs, accessibility issues, layout problems, broken links (404s), and more. Combines detectors, a **Decision Intelligence Layer**, and a **Human-Behavior Testing Layer** so results feel like a senior QA review, not a linter dump.
 
 ## Pipeline
@@ -86,4 +88,9 @@ Results are sorted by severity: **Urgent** → **High** → **Medium** → **Low
 | **intelligence** | Decision Intelligence Layer: intent analyzer, context validator, issue judge, importance ranker, result optimizer. Filters noise and ranks like a human QA. |
 | **behaviorEngine** | Human-Behavior Testing Layer: explorer, edge-case tester, state tester, expectation validator, inconsistency detector, judgment engine. Simulates user testing and finds behavioral/logical/interaction bugs. |
 
-See each folder’s `README.md` for module details and integration.
+See each folder's `README.md` for module details and integration.
+
+## Recent Improvements
+
+- **Enhanced Error Handling**: Improved resilience when QA test APIs fail - main analysis continues successfully even if automated tests encounter issues
+- **Custom Typography**: Updated title font to Phonk for a bold, distinctive look

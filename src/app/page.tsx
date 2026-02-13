@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileDropZone } from '@/components/FileDropZone';
 import { LoadingBar } from '@/components/LoadingBar';
 import { ResultsPanel } from '@/components/ResultsPanel';
 import { AutomatedTestPanel } from '@/components/AutomatedTestPanel';
 import { LadybugIcon, BeetleIcon, BeeIcon, ButterflyIcon } from '@/components/BugIcons';
+import { usePersistence } from '@/lib/persistence/use-persistence';
 import type { AnalysisResult } from '@/lib/qa-engine';
 import type { AutomatedTestResult } from '@/lib/qa-engine/automated-testing';
 
@@ -17,6 +18,38 @@ export default function Home() {
   const [previousSnapshot, setPreviousSnapshot] = useState<{ url: string; snapshot: AutomatedTestResult['visualRegression']['snapshot'] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'url' | 'files'>('url');
+  
+  // Data persistence hook
+  const { isInitialized, saveAnalysis, getAnalysisByUrl } = usePersistence();
+
+  useEffect(() => {
+    // #region agent log
+    const titleEl = document.querySelector('h1');
+    if (titleEl) {
+      const computedFont = getComputedStyle(titleEl).fontFamily;
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:20',message:'Title font check',data:{computedFont,hasPhonk:computedFont.includes('Phonk')},timestamp:Date.now(),runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    }
+    // #endregion
+  }, []);
+
+  // Load previous snapshot from persistence when URL changes
+  useEffect(() => {
+    if (!isInitialized || !url.trim()) return;
+
+    async function loadPreviousSnapshot() {
+      try {
+        const persisted = await getAnalysisByUrl(url.trim());
+        if (persisted?.snapshot) {
+          setPreviousSnapshot({ url: url.trim(), snapshot: persisted.snapshot });
+        }
+      } catch (err) {
+        // Silently fail - persistence is optional
+        console.warn('Failed to load previous snapshot:', err);
+      }
+    }
+
+    loadPreviousSnapshot();
+  }, [url, isInitialized, getAnalysisByUrl]);
 
   async function analyzeByUrl() {
     if (!url.trim()) return;
@@ -26,6 +59,9 @@ export default function Home() {
     setResult(null);
     setQaTestResult(null);
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:28',message:'Starting analyzeByUrl',data:{url:trimmedUrl,hasPreviousSnapshot:!!previousSnapshot},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       const [analyzeRes, qaRes] = await Promise.all([
         fetch('/api/analyze-url', {
           method: 'POST',
@@ -41,20 +77,76 @@ export default function Home() {
           }),
         }),
       ]);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:44',message:'API responses received',data:{analyzeResOk:analyzeRes.ok,qaResOk:qaRes.ok,analyzeStatus:analyzeRes.status,qaStatus:qaRes.status},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const analyzeData = await analyzeRes.json();
-      const qaData = await qaRes.json();
-      if (!analyzeRes.ok) throw new Error(analyzeData.error || 'Analysis failed');
-      setResult(analyzeData);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:47',message:'analyzeData parsed',data:{hasError:!!analyzeData.error,hasIssues:!!analyzeData.issues},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      let qaData = null;
       if (qaRes.ok) {
-        setQaTestResult(qaData);
-        if (qaData.visualRegression?.snapshot) {
-          setPreviousSnapshot({ url: trimmedUrl, snapshot: qaData.visualRegression.snapshot });
+        try {
+          qaData = await qaRes.json();
+        } catch (parseError) {
+          // QA test API returned ok but response body is not valid JSON - log and continue
+          console.warn('QA test response was ok but JSON parsing failed:', parseError);
         }
       }
+      if (!analyzeRes.ok) throw new Error(analyzeData.error || 'Analysis failed');
+      setResult(analyzeData);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:58',message:'Setting result state',data:{issuesCount:analyzeData?.issues?.length || 0},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      if (qaRes.ok && qaData) {
+        setQaTestResult(qaData);
+        const snapshot = qaData.visualRegression?.snapshot;
+        if (snapshot) {
+          setPreviousSnapshot({ url: trimmedUrl, snapshot });
+        }
+        
+        // Persist analysis results
+        if (isInitialized) {
+          try {
+            await saveAnalysis(
+              trimmedUrl,
+              analyzeData,
+              qaData,
+              snapshot || null
+            );
+          } catch (persistError) {
+            // Log but don't fail - persistence is optional
+            console.warn('Failed to persist analysis:', persistError);
+          }
+        }
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:63',message:'QA test result set',data:{hasSnapshot:!!snapshot},timestamp:Date.now(),runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+      } else {
+        // Persist analysis even without QA test results
+        if (isInitialized && analyzeData) {
+          try {
+            await saveAnalysis(trimmedUrl, analyzeData, null, null);
+          } catch (persistError) {
+            console.warn('Failed to persist analysis:', persistError);
+          }
+        }
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:67',message:'QA test skipped',data:{qaResOk:qaRes.ok,hasQaData:!!qaData},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+      }
     } catch (e) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:70',message:'Error caught',data:{error:e instanceof Error ? e.message : 'Unknown',errorType:e instanceof Error ? e.constructor.name : typeof e},timestamp:Date.now(),runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
       setLoading(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:75',message:'analyzeByUrl completed',data:{},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
     }
   }
 
@@ -64,16 +156,28 @@ export default function Home() {
     setResult(null);
     setQaTestResult(null);
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:84',message:'Starting analyzeByFiles',data:{filesCount:files.length,fileNames:files.map(f=>f.name)},timestamp:Date.now(),runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       const formData = new FormData();
       files.forEach(f => formData.append('files', f));
       const res = await fetch('/api/analyze-files', {
         method: 'POST',
         body: formData,
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:92',message:'analyze-files response received',data:{resOk:res.ok,status:res.status},timestamp:Date.now(),runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       const data = await res.json();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:95',message:'analyze-files data parsed',data:{hasError:!!data.error,hasIssues:!!data.issues,issuesCount:data?.issues?.length || 0},timestamp:Date.now(),runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       if (!res.ok) throw new Error(data.error || 'Analysis failed');
       setResult(data);
     } catch (e) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/0ce93f20-60b8-4990-8edd-ef497586694e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:100',message:'analyzeByFiles error',data:{error:e instanceof Error ? e.message : 'Unknown'},timestamp:Date.now(),runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
       setLoading(false);

@@ -1,0 +1,60 @@
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770985948814,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770985948817,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770985957883,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770985957884,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"btlr.com","hasPreviousSnapshot":false},"timestamp":1770985963238,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770985990740,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770985990741,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":15},"timestamp":1770985990741,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770985990741,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770985990741,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"https://yummyanime.tv/","hasPreviousSnapshot":true},"timestamp":1770986092579,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770986106681,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770986106681,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":16},"timestamp":1770986106682,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770986106682,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770986106682,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"sonusvos.com","hasPreviousSnapshot":true},"timestamp":1770986247231,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770986252428,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770986252429,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":3},"timestamp":1770986252429,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770986252429,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770986252429,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986675634,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986675635,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"mikegtc.com","hasPreviousSnapshot":false},"timestamp":1770986683702,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986691425,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986691426,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986691430,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986691430,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986692732,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986692732,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986692736,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770986692736,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770986693440,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770986693440,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":28},"timestamp":1770986693440,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770986693440,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770986693440,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"mikegtc.com","hasPreviousSnapshot":false},"timestamp":1770986765057,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770986774579,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770986774579,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":28},"timestamp":1770986774580,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770986774620,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770986774620,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"https://yummyanime.tv","hasPreviousSnapshot":true},"timestamp":1770986808093,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770986830180,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770986830181,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":16},"timestamp":1770986830181,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770986830208,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770986830208,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770987116870,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770987116871,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770988050942,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:20","message":"Title font check","data":{"computedFont":"__phonk_2b6ae6, __phonk_Fallback_2b6ae6, Phonk, system-ui, sans-serif","hasPhonk":true},"timestamp":1770988050943,"runId":"run1","hypothesisId":"G"}
+{"location":"page.tsx:28","message":"Starting analyzeByUrl","data":{"url":"https://yummyanime.tv/","hasPreviousSnapshot":false},"timestamp":1770988056977,"runId":"run1","hypothesisId":"A"}
+{"location":"page.tsx:44","message":"API responses received","data":{"analyzeResOk":true,"qaResOk":true,"analyzeStatus":200,"qaStatus":200},"timestamp":1770988081045,"runId":"run1","hypothesisId":"B"}
+{"location":"page.tsx:47","message":"analyzeData parsed","data":{"hasError":false,"hasIssues":true},"timestamp":1770988081046,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:58","message":"Setting result state","data":{"issuesCount":16},"timestamp":1770988081047,"runId":"run1","hypothesisId":"C"}
+{"location":"page.tsx:63","message":"QA test result set","data":{"hasSnapshot":true},"timestamp":1770988081093,"runId":"run1","hypothesisId":"D"}
+{"location":"page.tsx:75","message":"analyzeByUrl completed","data":{},"timestamp":1770988081093,"runId":"run1","hypothesisId":"A"}
